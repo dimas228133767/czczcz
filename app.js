@@ -165,6 +165,33 @@ const Store = {
   getCards(setId) {
     const set = this.load().find(s => s.id === setId);
     return set ? set.cards : [];
+  },
+  recordResult(setId, cardId, isCorrect) {
+    const sets = this.load();
+    const set = sets.find(s => s.id === setId);
+    if (!set) return;
+    const card = set.cards.find(c => c.id === cardId);
+    if (!card) return;
+
+    if (!card.correctCount) card.correctCount = 0;
+    if (!card.wrongCount) card.wrongCount = 0;
+
+    if (isCorrect) card.correctCount++;
+    else card.wrongCount++;
+    
+    card.lastStudied = Date.now();
+    this.save(sets);
+
+    // Update global streak
+    const stats = this.loadStats();
+    const today = new Date().toDateString();
+    if (isCorrect) {
+      if (stats.lastDate !== today) {
+        stats.streak++;
+        stats.lastDate = today;
+      }
+    }
+    this.saveStats(stats);
   }
 };
 
@@ -194,7 +221,7 @@ function renderHome() {
   const stats = Store.loadStats();
   
   // Dashboard stats
-  document.getElementById('statsStreak').textContent = stats.streak;
+  document.getElementById('statsStreak').innerHTML = `🔥 ${stats.streak}`;
   
   // Overall mastery calculation
   let totalMastered = 0;
@@ -203,7 +230,7 @@ function renderHome() {
       if ((c.correctCount || 0) >= 3) totalMastered++;
     });
   });
-  document.getElementById('statsMastered').textContent = totalMastered;
+  document.getElementById('statsMastered').innerHTML = `💎 ${totalMastered}`;
 
   setsGrid.innerHTML = '';
   const createBtnHTML = `

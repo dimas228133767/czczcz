@@ -9,6 +9,12 @@
   <link rel="stylesheet" href="style.css" />
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#4255ff" />
+  <script>
+    window.onerror = function(msg, url, line) {
+      alert("Ошибка при загрузке: " + msg + " (строка " + line + ")");
+      return false;
+    };
+  </script>
 </head>
 <body>
 
@@ -48,11 +54,11 @@
       <div class="dashboard-stats" id="dashboardStats">
         <div class="stat-item">
           <span class="stat-value" id="statsStreak">0</span>
-          <span class="stat-label">🔥 Стрик</span>
+          <span class="stat-label">Стрик</span>
         </div>
         <div class="stat-item">
           <span class="stat-value" id="statsMastered">0</span>
-          <span class="stat-label">✅ Выучено</span>
+          <span class="stat-label">Выучено</span>
         </div>
       </div>
 
