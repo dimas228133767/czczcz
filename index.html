@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FlashLingo — Изучение карточек</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#4255ff" />
+</head>
+<body>
+
+  <!-- App Header -->
+  <header class="app-header">
+    <div class="header-left" id="headerLogo" onclick="goToHome()">
+      <div class="logo-box">F</div>
+      <span class="logo-text">FlashLingo</span>
+    </div>
+    <div class="header-center" id="headerTitle">Библиотека</div>
+    <div class="header-right">
+      <button class="icon-btn" id="btnSettings" title="API ключ">⚙️</button>
+      <div class="avatar">👨‍🎓</div>
+    </div>
+  </header>
+
+  <!-- Settings modal -->
+  <div class="overlay" id="settingsOverlay">
+    <div class="modal">
+      <div class="modal-top">
+        <span>Настройки перевода (Gemini)</span>
+        <button onclick="closeSettings()">✕</button>
+      </div>
+      <p class="modal-hint">API ключ нужен для качественных умных подсказок. <a href="https://aistudio.google.com/apikey" target="_blank">Получить тут</a></p>
+      <div class="modal-row">
+        <input type="password" id="geminiKeyInput" placeholder="AIza..." />
+        <button class="btn-primary" id="saveKeyBtn">Сохранить</button>
+      </div>
+      <div id="keyStatus"></div>
+    </div>
+  </div>
+
+  <main id="appMain">
+    
+    <!-- 1. HOME VIEW (List of Sets) -->
+    <section id="viewHome" class="view-section active">
+      <div class="dashboard-stats" id="dashboardStats">
+        <div class="stat-item">
+          <span class="stat-value" id="statsStreak">0</span>
+          <span class="stat-label">🔥 Стрик</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-value" id="statsMastered">0</span>
+          <span class="stat-label">✅ Выучено</span>
+        </div>
+      </div>
+
+      <div class="view-header">
+        <h2>Ваши учебные модули</h2>
+        <button class="btn-primary" onclick="createNewSet()">+ Создать модуль</button>
+      </div>
+      <div class="sets-grid" id="setsGrid">
+        <!-- Sets rendered here -->
+      </div>
+    </section>
+
+    <!-- 2. SET VIEW (Details & Add Cards) -->
+    <section id="viewSet" class="view-section" style="display: none;">
+      <div class="set-top-bar">
+        <button class="btn-secondary" onclick="goToHome()">← Назад</button>
+        <div class="set-title-group">
+          <input type="text" id="currentSetTitleInput" class="editable-title-input" placeholder="Введите название модуля..." />
+          <span class="set-count" id="currentSetCount">0 терминов</span>
+        </div>
+        <button class="btn-danger-ghost" id="btnDeleteSet">Удалить модуль</button>
+      </div>
+
+      <!-- Study Buttons -->
+      <div class="study-modes">
+        <button class="study-card" onclick="startFlashcards()">
+          <span class="sc-icon">📇</span>
+          <div class="sc-text">Карточки</div>
+        </button>
+        <button class="study-card" onclick="startLearn()">
+          <span class="sc-icon">🧠</span>
+          <div class="sc-text">Заучивание</div>
+        </button>
+      </div>
+
+      <div class="cards-area-header">Термины в этом модуле</div>
+
+      <!-- Dynamic Cards List (Quizlet Row Style) -->
+      <div class="cards-list" id="cardsList">
+        <!-- Rendered rows go here -->
+      </div>
+
+      <!-- Dropdown for suggestions (portal) -->
+      <div class="dropdown" id="dropdown">
+        <div id="suggList"></div>
+        <div class="dropdown-tip">↑↓ выбор · Enter применить</div>
+      </div>
+
+      <!-- Add new card button -->
+      <div class="add-card-wrapper">
+        <button class="add-card-btn" onclick="addNewEmptyRow()">+ Добавить карточку</button>
+      </div>
+      
+    </section>
+
+    <!-- 3. FLASHCARDS VIEW -->
+    <section id="viewFlashcards" class="view-section study-fullscreen" style="display: none;">
+      <div class="study-top">
+        <button class="btn-secondary" onclick="exitStudy()">← К модулю</button>
+        <div class="study-progress">
+          <span id="fcProgressText">1 / 10</span>
+          <div class="progress-bar-bg"><div class="progress-bar-fill" id="fcProgressBar"></div></div>
+        </div>
+        <div class="study-actions"></div>
+      </div>
+
+      <div class="flashcard-container" id="fcContainer">
+        <!-- 3D Flip Card -->
+        <div class="flashcard-inner" id="fcInner" onclick="flipCard()">
+          <div class="flashcard-front">
+            <div class="fc-content" id="fcFrontText">Word</div>
+            <button class="audio-btn fc-audio" id="fcFrontAudio" onclick="playAudio(event, 'front')">🔊</button>
+            <div class="fc-hint">Кликните, чтобы перевернуть</div>
+          </div>
+          <div class="flashcard-back">
+            <div class="fc-content" id="fcBackText">Слово</div>
+            <button class="audio-btn fc-audio" id="fcBackAudio" onclick="playAudio(event, 'back')">🔊</button>
+            <div class="fc-hint">Кликните, чтобы перевернуть</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flashcards-controls">
+        <button class="fc-nav-btn" onclick="prevCard()" title="Стрелка влево">←</button>
+        <span class="fc-nav-hint">Используйте ⬅️ ➡️ или Пробел</span>
+        <button class="fc-nav-btn" onclick="nextCard()" title="Стрелка вправо">→</button>
+      </div>
+    </section>
+
+    <!-- 4. LEARN (QUIZ) VIEW -->
+    <section id="viewQuiz" class="view-section study-fullscreen" style="display: none;">
+      <div class="study-top">
+        <button class="btn-secondary" onclick="exitStudy()">← Завершить</button>
+        <div class="study-progress">
+          <span id="quizScore">0 / 0</span>
+        </div>
+        <div class="quiz-mode-toggle">
+          <button id="modeEnRu" class="mode-btn active">EN → RU</button>
+          <button id="modeRuEn" class="mode-btn">RU → EN</button>
+        </div>
+      </div>
+
+      <div class="quiz-wrap" id="quizWrap">
+        <!-- Need more cards state -->
+        <div class="quiz-state" id="quizNeedMore">
+          <p class="quiz-big-msg">Нужно минимум 4 карточки</p>
+          <button class="btn-primary" onclick="exitStudy()">Вернуться и добавить</button>
+        </div>
+
+        <!-- Active quiz -->
+        <div class="quiz-state" id="quizActive" style="display:none">
+          <div class="quiz-streak" id="quizStreak"></div>
+          <div class="quiz-card" id="quizCard">
+            <div class="quiz-lang" id="quizLang">EN</div>
+            <div class="quiz-word" id="quizWord">—</div>
+          </div>
+
+          <div class="options-grid" id="optionsGrid"></div>
+          <div class="quiz-feedback" id="quizFeedback"></div>
+        </div>
+
+        <!-- Finished state -->
+        <div class="quiz-state" id="quizFinished" style="display:none">
+          <div class="finish-icon" id="finishIcon">🎉</div>
+          <p class="quiz-big-msg" id="finishMsg">Раунд завершён!</p>
+          <p class="sub" id="finishSub"></p>
+          <button class="btn-primary" id="btnRestart" style="margin-top:24px">Повторить тест</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="toast">
+    <span id="toastMsg">Удалено</span>
+    <!-- Action button used for undo inside the set -->
+    <button id="toastAction" class="toast-action">Отменить</button>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then(reg => console.log('SW Registered', reg))
+          .catch(err => console.log('SW Error', err));
+      });
+    }
+  </script>
+</body>
+</html>
