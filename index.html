@@ -7,7 +7,6 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
-  <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#4255ff" />
   <script>
     window.onerror = function(msg, url, line) {
@@ -200,14 +199,5 @@
   </div>
 
   <script src="app.js"></script>
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js')
-          .then(reg => console.log('SW Registered', reg))
-          .catch(err => console.log('SW Error', err));
-      });
-    }
-  </script>
 </body>
 </html>

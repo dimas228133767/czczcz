@@ -1,19 +1,22 @@
-const CACHE_NAME = 'flashlingo-v2';
+const CACHE_NAME = 'flashlingo-v3'; // Changed version to force update
 const ASSETS = [
   './',
   './index.html',
   './style.css',
   './app.js',
   './manifest.json',
-  'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap'
+  'https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap'
 ];
 
+// Install: Cache all assets
 self.addEventListener('install', (e) => {
+  self.skipWaiting();
   e.waitUntil(
     caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS))
   );
 });
 
+// Activate: Clean up old caches
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys().then(keys => Promise.all(
@@ -24,9 +27,17 @@ self.addEventListener('activate', (e) => {
   );
 });
 
+// Fetch: Stale-while-revalidate strategy for better updates
 self.addEventListener('fetch', (e) => {
-  // Simple cache-first strategy
   e.respondWith(
-    caches.match(e.request).then(res => res || fetch(e.request))
+    caches.match(e.request).then(cachedResponse => {
+      const fetchPromise = fetch(e.request).then(networkResponse => {
+        caches.open(CACHE_NAME).then(cache => {
+          cache.put(e.request, networkResponse.clone());
+        });
+        return networkResponse;
+      });
+      return cachedResponse || fetchPromise;
+    })
   );
 });
