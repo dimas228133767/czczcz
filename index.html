@@ -101,12 +101,6 @@
         <!-- Rendered rows go here -->
       </div>
 
-      <!-- Dropdown for suggestions (portal) -->
-      <div class="dropdown" id="dropdown">
-        <div id="suggList"></div>
-        <div class="dropdown-tip">↑↓ выбор · Enter применить</div>
-      </div>
-
       <!-- Add new card button -->
       <div class="add-card-wrapper">
         <button class="add-card-btn" onclick="addNewEmptyRow()">+ Добавить карточку</button>
@@ -197,6 +191,12 @@
     <span id="toastMsg">Удалено</span>
     <!-- Action button used for undo inside the set -->
     <button id="toastAction" class="toast-action">Отменить</button>
+  </div>
+
+  <!-- Dropdown portal -->
+  <div class="dropdown" id="dropdown" style="display: none;">
+    <div id="suggList"></div>
+    <div class="dropdown-tip">↑↓ выбор · Enter применить</div>
   </div>
 
   <script src="app.js"></script>

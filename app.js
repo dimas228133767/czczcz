@@ -508,7 +508,8 @@ function renderDropdown() {
   
   // Position Dropdown under active input
   const rect = activeInputRef.el.getBoundingClientRect();
-  dropdown.style.top = `${window.scrollY + rect.bottom + 8}px`;
+  dropdown.style.position = 'fixed'; // Use fixed for better precision
+  dropdown.style.top = `${rect.bottom + 8}px`;
   dropdown.style.left = `${rect.left}px`;
   dropdown.style.width = `${rect.width}px`;
   dropdown.style.display = 'block';
