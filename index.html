@@ -3,199 +3,242 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>FlashLingo — Изучение карточек</title>
+  <meta name="description" content="FlashLingo — минималистичные карточки для изучения английского" />
+  <title>FlashLingo</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;1,14..32,400&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
-  <meta name="theme-color" content="#4255ff" />
-  <script>
-    window.onerror = function(msg, url, line) {
-      alert("Ошибка при загрузке: " + msg + " (строка " + line + ")");
-      return false;
-    };
-  </script>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#0d0d0f" />
 </head>
 <body>
 
-  <!-- App Header -->
+  <!-- ── App Header ── -->
   <header class="app-header">
-    <div class="header-left" id="headerLogo" onclick="goToHome()">
-      <div class="logo-box">F</div>
-      <span class="logo-text">FlashLingo</span>
+    <div class="header-logo" id="btnHome">
+      <div class="header-logo-mark">F</div>
+      <span class="header-logo-text">FlashLingo</span>
     </div>
-    <div class="header-center" id="headerTitle">Библиотека</div>
-    <div class="header-right">
-      <button class="icon-btn" id="btnSettings" title="API ключ">⚙️</button>
-      <div class="avatar">👨‍🎓</div>
+
+    <div class="header-title" id="headerTitle"></div>
+
+    <div class="header-actions">
+      <button class="icon-btn" id="btnSettings" title="Настройки">
+        <!-- gear icon -->
+        <svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
     </div>
   </header>
 
-  <!-- Settings modal -->
-  <div class="overlay" id="settingsOverlay">
-    <div class="modal">
-      <div class="modal-top">
-        <span>Настройки перевода (Gemini)</span>
-        <button onclick="closeSettings()">✕</button>
+  <!-- ═══════════════════════════════════════════════════════════
+       HOME VIEW — List of Sets
+  ═══════════════════════════════════════════════════════════ -->
+  <main class="app-main view active" id="viewHome">
+    <div class="home-header">
+      <h1 class="home-heading">Модули</h1>
+      <button class="btn btn-primary" id="btnCreateSet">+ Создать</button>
+    </div>
+
+    <div class="sets-grid" id="setsGrid">
+      <!-- dynamically rendered -->
+    </div>
+  </main>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       SET VIEW — Edit Cards
+  ═══════════════════════════════════════════════════════════ -->
+  <main class="app-main view" id="viewSet">
+    <!-- Title + back -->
+    <div class="set-view-top">
+      <button class="icon-btn" id="btnBackFromSet" title="Назад">
+        <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <input type="text" class="set-title-input" id="setTitleInput" placeholder="Название модуля…" />
+      <button class="btn btn-danger" id="btnDeleteSet">Удалить</button>
+    </div>
+
+    <!-- Study modes -->
+    <div class="study-modes">
+      <button class="study-mode-btn" id="btnStartFlashcards">
+        <span class="icon">🃏</span>
+        <span class="label">Карточки</span>
+      </button>
+      <button class="study-mode-btn" id="btnStartQuiz">
+        <span class="icon">🧠</span>
+        <span class="label">Тест</span>
+      </button>
+    </div>
+
+    <!-- Card list -->
+    <div class="section-label" id="setCardCount">0 карточек</div>
+    <div class="cards-list" id="cardsList"></div>
+
+    <button class="add-card-btn" id="btnAddCard">
+      <span>+</span> Добавить карточку
+    </button>
+  </main>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       FLASHCARDS STUDY VIEW
+  ═══════════════════════════════════════════════════════════ -->
+  <div class="study-view" id="viewFlashcards">
+    <!-- Top bar -->
+    <div class="study-header">
+      <button class="btn btn-ghost" id="btnExitFlashcards">← Назад</button>
+      <span class="fc-counter" id="fcCounter">1 / 1</span>
+      <div style="width:80px"></div><!-- spacer -->
+    </div>
+
+    <!-- Progress track -->
+    <div class="progress-track">
+      <div class="progress-fill" id="fcProgressFill" style="width:0%"></div>
+    </div>
+
+    <!-- Card stage (shown while studying) -->
+    <div id="fcStudy" style="display:flex; flex-direction:column; flex:1;">
+      <!-- 3D Card -->
+      <div class="fc-stage" id="fcStage">
+        <div class="fc-wrapper" id="fcWrapper">
+          <div class="fc-inner" id="fcInner">
+
+            <!-- FRONT -->
+            <div class="fc-face fc-front">
+              <span class="fc-side-label">EN</span>
+              <div class="fc-word" id="fcFrontWord">Word</div>
+              <div class="fc-context" id="fcFrontContext"></div>
+              <div class="fc-hint">Нажмите, чтобы перевернуть</div>
+              <button class="fc-audio-btn" id="fcFrontAudio" title="Произнести">🔊</button>
+            </div>
+
+            <!-- BACK -->
+            <div class="fc-face fc-back">
+              <span class="fc-side-label">RU</span>
+              <div class="fc-word" id="fcBackWord">Слово</div>
+              <div class="fc-context" id="fcBackContext"></div>
+              <div class="fc-hint">Нажмите, чтобы вернуть</div>
+              <button class="fc-audio-btn" id="fcBackAudio" title="Произнести">🔊</button>
+            </div>
+
+          </div>
+        </div>
       </div>
-      <p class="modal-hint">API ключ нужен для качественных умных подсказок. <a href="https://aistudio.google.com/apikey" target="_blank">Получить тут</a></p>
-      <div class="modal-row">
-        <input type="password" id="geminiKeyInput" placeholder="AIza..." />
-        <button class="btn-primary" id="saveKeyBtn">Сохранить</button>
+
+      <!-- Verdict buttons (Know / Don't know) — visible after flip -->
+      <div class="fc-verdict hidden" id="fcVerdict">
+        <button class="fc-verdict-btn btn-forget" id="btnForget">✗ Не помню</button>
+        <button class="fc-verdict-btn btn-know"   id="btnKnow">✓ Помню</button>
       </div>
-      <div id="keyStatus"></div>
+
+      <!-- Navigation -->
+      <div class="fc-controls">
+        <button class="fc-nav-btn" id="btnFcPrev" title="← или стрелка влево">←</button>
+        <button class="fc-flip-btn" id="btnFlip">Перевернуть</button>
+        <button class="fc-nav-btn" id="btnFcNext" title="→ или стрелка вправо">→</button>
+      </div>
+    </div>
+
+    <!-- Finished screen -->
+    <div class="fc-finished" id="fcFinished" style="display:none">
+      <div class="fc-finished-emoji" id="fcFinishedEmoji">🎉</div>
+      <div class="fc-finished-title" id="fcFinishedTitle">Раунд завершён!</div>
+      <div class="fc-finished-sub" id="fcFinishedSub"></div>
+      <div class="fc-finished-actions">
+        <button class="btn btn-primary" id="btnFcRestart">Ещё раз</button>
+        <button class="btn btn-ghost"   id="btnFcExit">К модулю</button>
+      </div>
     </div>
   </div>
 
-  <main id="appMain">
-    
-    <!-- 1. HOME VIEW (List of Sets) -->
-    <section id="viewHome" class="view-section active">
-      <div class="dashboard-stats" id="dashboardStats">
-        <div class="stat-item">
-          <span class="stat-value" id="statsStreak">0</span>
-          <span class="stat-label">Стрик</span>
+  <!-- ═══════════════════════════════════════════════════════════
+       QUIZ VIEW
+  ═══════════════════════════════════════════════════════════ -->
+  <div class="quiz-view" id="viewQuiz">
+
+    <!-- Top bar -->
+    <div class="study-header" style="padding-bottom:0;">
+      <button class="btn btn-ghost" id="btnExitQuiz">← Назад</button>
+      <span class="quiz-score" id="quizScore">0 / 0</span>
+      <div class="mode-toggle">
+        <button class="mode-toggle-btn active" id="modeEnRu">EN → RU</button>
+        <button class="mode-toggle-btn"        id="modeRuEn">RU → EN</button>
+      </div>
+    </div>
+
+    <!-- Progress track -->
+    <div class="progress-track">
+      <div class="progress-fill" id="quizProgressFill" style="width:0%"></div>
+    </div>
+
+    <!-- Quiz body -->
+    <div class="quiz-body" id="quizBody">
+
+      <!-- Not enough cards -->
+      <div class="quiz-need-more" id="quizNeedMore" style="display:none">
+        <div style="font-size:40px">📚</div>
+        <div style="font-size:18px; font-weight:600;">Нужно минимум 4 карточки</div>
+        <div style="font-size:14px; color:var(--text-muted);">Добавьте ещё слова в модуль</div>
+        <button class="btn btn-primary" id="btnGoAddCards" style="margin-top:12px;">Добавить</button>
+      </div>
+
+      <!-- Active quiz -->
+      <div id="quizActive" style="width:100%; display:none;">
+        <div class="streak-badge" id="streakBadge"></div>
+
+        <!-- Question card -->
+        <div class="quiz-question-card">
+          <div class="quiz-lang-tag" id="quizLangTag">EN</div>
+          <div class="quiz-word" id="quizWord">—</div>
         </div>
-        <div class="stat-item">
-          <span class="stat-value" id="statsMastered">0</span>
-          <span class="stat-label">Выучено</span>
-        </div>
+
+        <!-- 4 options -->
+        <div class="options-grid" id="optionsGrid"></div>
       </div>
 
-      <div class="view-header">
-        <h2>Ваши учебные модули</h2>
-        <button class="btn-primary" onclick="createNewSet()">+ Создать модуль</button>
-      </div>
-      <div class="sets-grid" id="setsGrid">
-        <!-- Sets rendered here -->
-      </div>
-    </section>
-
-    <!-- 2. SET VIEW (Details & Add Cards) -->
-    <section id="viewSet" class="view-section" style="display: none;">
-      <div class="set-top-bar">
-        <button class="btn-secondary" onclick="goToHome()">← Назад</button>
-        <div class="set-title-group">
-          <input type="text" id="currentSetTitleInput" class="editable-title-input" placeholder="Введите название модуля..." />
-          <span class="set-count" id="currentSetCount">0 терминов</span>
-        </div>
-        <button class="btn-danger-ghost" id="btnDeleteSet">Удалить модуль</button>
-      </div>
-
-      <!-- Study Buttons -->
-      <div class="study-modes">
-        <button class="study-card" onclick="startFlashcards()">
-          <span class="sc-icon">📇</span>
-          <div class="sc-text">Карточки</div>
-        </button>
-        <button class="study-card" onclick="startLearn()">
-          <span class="sc-icon">🧠</span>
-          <div class="sc-text">Заучивание</div>
-        </button>
-      </div>
-
-      <div class="cards-area-header">Термины в этом модуле</div>
-
-      <!-- Dynamic Cards List (Quizlet Row Style) -->
-      <div class="cards-list" id="cardsList">
-        <!-- Rendered rows go here -->
-      </div>
-
-      <!-- Add new card button -->
-      <div class="add-card-wrapper">
-        <button class="add-card-btn" onclick="addNewEmptyRow()">+ Добавить карточку</button>
-      </div>
-      
-    </section>
-
-    <!-- 3. FLASHCARDS VIEW -->
-    <section id="viewFlashcards" class="view-section study-fullscreen" style="display: none;">
-      <div class="study-top">
-        <button class="btn-secondary" onclick="exitStudy()">← К модулю</button>
-        <div class="study-progress">
-          <span id="fcProgressText">1 / 10</span>
-          <div class="progress-bar-bg"><div class="progress-bar-fill" id="fcProgressBar"></div></div>
-        </div>
-        <div class="study-actions"></div>
-      </div>
-
-      <div class="flashcard-container" id="fcContainer">
-        <!-- 3D Flip Card -->
-        <div class="flashcard-inner" id="fcInner" onclick="flipCard()">
-          <div class="flashcard-front">
-            <div class="fc-content" id="fcFrontText">Word</div>
-            <button class="audio-btn fc-audio" id="fcFrontAudio" onclick="playAudio(event, 'front')">🔊</button>
-            <div class="fc-hint">Кликните, чтобы перевернуть</div>
-          </div>
-          <div class="flashcard-back">
-            <div class="fc-content" id="fcBackText">Слово</div>
-            <button class="audio-btn fc-audio" id="fcBackAudio" onclick="playAudio(event, 'back')">🔊</button>
-            <div class="fc-hint">Кликните, чтобы перевернуть</div>
-          </div>
+      <!-- Finished -->
+      <div class="fc-finished" id="quizFinished" style="display:none">
+        <div class="fc-finished-emoji">🏆</div>
+        <div class="fc-finished-title" id="quizFinishedTitle">Раунд завершён!</div>
+        <div class="fc-finished-sub"   id="quizFinishedSub"></div>
+        <div class="fc-finished-actions">
+          <button class="btn btn-primary" id="btnQuizRestart">Повторить</button>
+          <button class="btn btn-ghost"   id="btnQuizExit">К модулю</button>
         </div>
       </div>
 
-      <div class="flashcards-controls">
-        <button class="fc-nav-btn" onclick="prevCard()" title="Стрелка влево">←</button>
-        <span class="fc-nav-hint">Используйте ⬅️ ➡️ или Пробел</span>
-        <button class="fc-nav-btn" onclick="nextCard()" title="Стрелка вправо">→</button>
-      </div>
-    </section>
-
-    <!-- 4. LEARN (QUIZ) VIEW -->
-    <section id="viewQuiz" class="view-section study-fullscreen" style="display: none;">
-      <div class="study-top">
-        <button class="btn-secondary" onclick="exitStudy()">← Завершить</button>
-        <div class="study-progress">
-          <span id="quizScore">0 / 0</span>
-        </div>
-        <div class="quiz-mode-toggle">
-          <button id="modeEnRu" class="mode-btn active">EN → RU</button>
-          <button id="modeRuEn" class="mode-btn">RU → EN</button>
-        </div>
-      </div>
-
-      <div class="quiz-wrap" id="quizWrap">
-        <!-- Need more cards state -->
-        <div class="quiz-state" id="quizNeedMore">
-          <p class="quiz-big-msg">Нужно минимум 4 карточки</p>
-          <button class="btn-primary" onclick="exitStudy()">Вернуться и добавить</button>
-        </div>
-
-        <!-- Active quiz -->
-        <div class="quiz-state" id="quizActive" style="display:none">
-          <div class="quiz-streak" id="quizStreak"></div>
-          <div class="quiz-card" id="quizCard">
-            <div class="quiz-lang" id="quizLang">EN</div>
-            <div class="quiz-word" id="quizWord">—</div>
-          </div>
-
-          <div class="options-grid" id="optionsGrid"></div>
-          <div class="quiz-feedback" id="quizFeedback"></div>
-        </div>
-
-        <!-- Finished state -->
-        <div class="quiz-state" id="quizFinished" style="display:none">
-          <div class="finish-icon" id="finishIcon">🎉</div>
-          <p class="quiz-big-msg" id="finishMsg">Раунд завершён!</p>
-          <p class="sub" id="finishSub"></p>
-          <button class="btn-primary" id="btnRestart" style="margin-top:24px">Повторить тест</button>
-        </div>
-      </div>
-    </section>
-
-  </main>
-
-  <!-- Toast Notification -->
-  <div id="toast" class="toast">
-    <span id="toastMsg">Удалено</span>
-    <!-- Action button used for undo inside the set -->
-    <button id="toastAction" class="toast-action">Отменить</button>
+    </div>
   </div>
 
-  <!-- Dropdown portal -->
-  <div class="dropdown" id="dropdown" style="display: none;">
-    <div id="suggList"></div>
-    <div class="dropdown-tip">↑↓ выбор · Enter применить</div>
+  <!-- ═══════════════════════════════════════════════════════════
+       SETTINGS MODAL
+  ═══════════════════════════════════════════════════════════ -->
+  <div class="modal-overlay" id="settingsOverlay">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title">Настройки</span>
+        <button class="icon-btn" id="btnCloseSettings">
+          <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <p class="modal-hint">
+        Gemini API ключ — для умных подсказок при вводе слов.<br>
+        <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Получить бесплатно →</a>
+      </p>
+      <input type="password" class="modal-input" id="geminiKeyInput" placeholder="AIza…" />
+      <div style="display:flex; gap:8px; justify-content:flex-end;">
+        <button class="btn btn-ghost" id="btnCancelSettings">Отмена</button>
+        <button class="btn btn-primary" id="btnSaveKey">Сохранить</button>
+      </div>
+      <div class="modal-status" id="keyStatus"></div>
+    </div>
+  </div>
+
+  <!-- ─ Autocomplete Dropdown Portal ─ -->
+  <div class="dropdown-portal" id="dropdownPortal" style="display:none;"></div>
+
+  <!-- ─ Toast ─ -->
+  <div class="toast" id="toast">
+    <span id="toastMsg">Удалено</span>
+    <span class="toast-undo" id="toastUndo">Отменить</span>
   </div>
 
   <script src="app.js"></script>
