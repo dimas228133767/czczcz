@@ -38,8 +38,11 @@ const Store = {
   },
 
   save(sets) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(sets));
-    SyncService.push(sets); // push to cloud on every change
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(sets));
+      localStorage.setItem('flashlingo_updated', String(Date.now()));
+      SyncService.push(sets); 
+    } catch (e) { console.error('Store.save failed', e); }
   },
 
   getSet(id)   { return this.load().find(s => s.id === id) || null; },
@@ -169,8 +172,8 @@ const SyncService = {
       const remote = d.record;
       if (!remote?.sets) { this.setStatus('ok'); return null; }
 
-      // Compare timestamps
-      const localUpdated  = parseInt(localStorage.getItem('flashlingo_updated') || '0');
+      const localSets    = Store.load();
+      const localUpdated = parseInt(localStorage.getItem('flashlingo_updated') || '0');
       const remoteUpdated = remote.updatedAt || 0;
       this.setStatus('ok');
 
@@ -211,6 +214,16 @@ const SyncService = {
         this.setStatus('error');
       }
     } catch { this.setStatus('error'); }
+  },
+
+  /**
+   * On boot, if local is newer than remote, push it.
+   */
+  async checkAndPushIfNeeded(remoteUpdated) {
+    const localUpdated = parseInt(localStorage.getItem('flashlingo_updated') || '0');
+    if (localUpdated > (remoteUpdated || 0)) {
+      this.push(Store.load());
+    }
   }
 };
 
@@ -687,6 +700,9 @@ function init() {
     if (remoteSets) {
       showToast('☁ Данные загружены из облака');
       renderHome();
+    } else {
+      // If pull returned null (local is newer or equal), check if we need to push
+      SyncService.checkAndPushIfNeeded();
     }
   });
 }
