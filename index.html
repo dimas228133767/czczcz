@@ -61,12 +61,8 @@
     <!-- Study modes -->
     <div class="study-modes">
       <button class="study-mode-btn" id="btnStartFlashcards">
-        <span class="icon">🃏</span>
-        <span class="label">Карточки</span>
-      </button>
-      <button class="study-mode-btn" id="btnStartQuiz">
-        <span class="icon">🧠</span>
-        <span class="label">Тест</span>
+        <div class="study-mode-icon">🎴</div>
+        <div class="study-mode-label">Карточки</div>
       </button>
     </div>
 
@@ -150,64 +146,7 @@
     </div>
   </div>
 
-  <!-- ═══════════════════════════════════════════════════════════
-       QUIZ VIEW
-  ═══════════════════════════════════════════════════════════ -->
-  <div class="quiz-view" id="viewQuiz">
 
-    <!-- Top bar -->
-    <div class="study-header" style="padding-bottom:0;">
-      <button class="btn btn-ghost" id="btnExitQuiz">← Назад</button>
-      <span class="quiz-score" id="quizScore">0 / 0</span>
-      <div class="mode-toggle">
-        <button class="mode-toggle-btn active" id="modeEnRu">EN → RU</button>
-        <button class="mode-toggle-btn"        id="modeRuEn">RU → EN</button>
-      </div>
-    </div>
-
-    <!-- Progress track -->
-    <div class="progress-track">
-      <div class="progress-fill" id="quizProgressFill" style="width:0%"></div>
-    </div>
-
-    <!-- Quiz body -->
-    <div class="quiz-body" id="quizBody">
-
-      <!-- Not enough cards -->
-      <div class="quiz-need-more" id="quizNeedMore" style="display:none">
-        <div style="font-size:40px">📚</div>
-        <div style="font-size:18px; font-weight:600;">Нужно минимум 4 карточки</div>
-        <div style="font-size:14px; color:var(--text-muted);">Добавьте ещё слова в модуль</div>
-        <button class="btn btn-primary" id="btnGoAddCards" style="margin-top:12px;">Добавить</button>
-      </div>
-
-      <!-- Active quiz -->
-      <div id="quizActive" style="width:100%; display:none;">
-        <div class="streak-badge" id="streakBadge"></div>
-
-        <!-- Question card -->
-        <div class="quiz-question-card">
-          <div class="quiz-lang-tag" id="quizLangTag">EN</div>
-          <div class="quiz-word" id="quizWord">—</div>
-        </div>
-
-        <!-- 4 options -->
-        <div class="options-grid" id="optionsGrid"></div>
-      </div>
-
-      <!-- Finished -->
-      <div class="fc-finished" id="quizFinished" style="display:none">
-        <div class="fc-finished-emoji">🏆</div>
-        <div class="fc-finished-title" id="quizFinishedTitle">Раунд завершён!</div>
-        <div class="fc-finished-sub"   id="quizFinishedSub"></div>
-        <div class="fc-finished-actions">
-          <button class="btn btn-primary" id="btnQuizRestart">Повторить</button>
-          <button class="btn btn-ghost"   id="btnQuizExit">К модулю</button>
-        </div>
-      </div>
-
-    </div>
-  </div>
 
   <!-- ═══════════════════════════════════════════════════════════
        SETTINGS MODAL
@@ -244,25 +183,12 @@
         <button class="btn btn-primary" id="btnSyncConnect" style="flex-shrink:0;">Подключить</button>
       </div>
 
-      <hr style="border:none; border-top:1px solid var(--border); margin:16px 0;" />
-
-      <!-- ── Gemini AI section ── -->
-      <div class="modal-section-label">🤖 Gemini AI (подсказки)</div>
-      <p class="modal-hint">
-        Нужен для умных подсказок при вводе слов.<br>
-        <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Получить бесплатно →</a>
-      </p>
-      <input type="password" class="modal-input" id="geminiKeyInput" placeholder="AIza…" />
-      <div style="display:flex; gap:8px; justify-content:flex-end;">
-        <button class="btn btn-ghost" id="btnCancelSettings">Отмена</button>
-        <button class="btn btn-primary" id="btnSaveKey">Сохранить</button>
-      </div>
-      <div class="modal-status" id="keyStatus"></div>
+      <div style="padding-top:12px;"></div>
     </div>
   </div>
 
   <!-- ─ Autocomplete Dropdown Portal ─ -->
-  <div class="dropdown-portal" id="dropdownPortal" style="display:none;"></div>
+
 
   <!-- ─ Toast ─ -->
   <div class="toast" id="toast">

@@ -13,11 +13,8 @@
 // ── Constants ──────────────────────────────────────────────
 const STORAGE_KEY    = 'flashlingo_sets';
 const OLD_STORAGE_KEY= 'flashlingo_cards';
-const API_KEY_STORE  = 'flashlingo_gemini_key';
 const SYNC_KEY       = 'flashlingo_sync';   // { apiKey, binId }
 const DEBOUNCE_MS    = 300;
-const MYMEMORY_URL   = 'https://api.mymemory.translated.net/get';
-const GEMINI_URL     = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 const JSONBIN_URL    = 'https://api.jsonbin.io/v3/b';
 
 /* ═══════════════════════════════════════════════════════════
@@ -359,10 +356,6 @@ function buildCardRow(card) {
   termInp.onblur = () => Store.updateCard(AppState.activeSetId, card.id, { en: termInp.value });
   defInp.onblur  = () => Store.updateCard(AppState.activeSetId, card.id, { ru: defInp.value  });
 
-  // Autocomplete on term input
-  termInp.addEventListener('input',   () => handleAutocomplete(termInp));
-  termInp.addEventListener('keydown', e  => handleDropdownKey(e, termInp, null));
-
   // Delete with undo
   delBtn.onclick = () => {
     // Re-read fresh data before deleting
@@ -394,9 +387,6 @@ function addNewEmptyRow() {
   row.dataset.new = 'true';
 
   const termInp = el('input', 'card-input');
-  termInp.type        = 'text';
-  termInp.placeholder = 'Термин (English)';
-
   const sep = el('div', 'card-sep');
 
   const defInp = el('input', 'card-input');
@@ -419,24 +409,18 @@ function addNewEmptyRow() {
     if (card) {
       row.dataset.new = '';
       row.dataset.cardId = card.id;
-      // Convert to permanent row
       const saved = buildCardRow(card);
       row.replaceWith(saved);
       updateCardCount();
-      addNewEmptyRow(); // auto next row
+      addNewEmptyRow();
     }
   };
 
-  // Save on Tab out of def, or Enter anywhere
-  defInp.addEventListener('keydown', e => { if (e.key === 'Enter' || (e.key === 'Tab' && !e.shiftKey)) { e.preventDefault(); save(); } });
-  termInp.addEventListener('keydown', e => {
+  defInp.onkeydown = e => { if (e.key === 'Enter' || (e.key === 'Tab' && !e.shiftKey)) { e.preventDefault(); save(); } };
+  termInp.onkeydown = e => {
     if (e.key === 'Tab' && !e.shiftKey) { e.preventDefault(); defInp.focus(); }
     if (e.key === 'Enter') { e.preventDefault(); defInp.focus(); }
-  });
-
-  // Autocomplete on new row
-  termInp.addEventListener('input',   () => handleAutocomplete(termInp, defInp));
-  termInp.addEventListener('keydown', e  => handleDropdownKey(e, termInp, defInp));
+  };
 
   termInp.focus();
   row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -447,320 +431,6 @@ function createNewSet() {
   if (name === null) return;
   const newSet = Store.createSet(name);
   openSet(newSet.id);
-}
-
-/* ═══════════════════════════════════════════════════════════
-   SLANG DICTIONARY — instant, no network needed
-   EN → RU and RU → EN
-   ═══════════════════════════════════════════════════════════ */
-const SLANG_EN_RU = {
-  // Разговорные сокращения
-  "gonna":   "собираюсь / буду",
-  "wanna":   "хочу / хотеть",
-  "gotta":   "должен / нужно",
-  "kinda":   "типа / как бы",
-  "sorta":   "вроде / типа",
-  "lemme":   "дай мне / позволь",
-  "gimme":   "дай мне",
-  "dunno":   "не знаю",
-  "ain't":   "не есть / нет",
-  "y'all":   "вы все / все вы",
-  "cuz":     "потому что",
-  "'cause":  "потому что",
-  "'bout":   "насчёт / примерно",
-  "tryna":   "пытаюсь",
-  "shoulda": "должен был",
-  "coulda":  "мог бы",
-  "woulda":  "мог бы / сделал бы",
-  // Сленг
-  "lit":       "крутой / горячий / в кайф",
-  "fire":      "огонь / крутяк",
-  "slay":      "убивать / выглядеть шикарно",
-  "vibe":      "атмосфера / ощущение",
-  "vibing":    "кайфовать / кайфуем",
-  "bussin":    "очень вкусно / топ",
-  "bussing":   "очень вкусно / топ",
-  "sus":       "подозрительный",
-  "cap":       "ложь / брехня",
-  "no cap":    "без обмана / серьёзно",
-  "lowkey":    "тихонько / по-тихому / немного",
-  "highkey":   "явно / сильно",
-  "mid":       "посредственный / средненький",
-  "slaps":     "звучит отлично / это огонь",
-  "hits different": "воспринимается иначе / по-другому ощущается",
-  "it hits":   "это бьёт / это трогает",
-  "goated":    "легенда / лучший из лучших",
-  "goat":      "легенда (Greatest Of All Time)",
-  "based":     "здравый / крутой / независимый",
-  "cringe":    "кринж / стыдобище",
-  "salty":     "обиженный / недовольный",
-  "savage":    "дикий / безбашенный",
-  "extra":     "чересчур / пережимает",
-  "shady":     "подозрительный / мутный",
-  "sketchy":   "подозрительный / странный",
-  "snatched":  "безупречный / выглядеть шикарно",
-  "receipts":  "доказательства / скрины",
-  "tea":       "сплетни / инфа",
-  "spill the tea": "рассказать сплетни",
-  "shade":     "снисходительность / дерзость",
-  "throw shade": "подкалывать / унижать",
-  "ghost":     "пропасть / игнорировать",
-  "ghosted":   "пропал / перестал отвечать",
-  "flex":      "хвастаться / показывать",
-  "clout":     "влияние / популярность",
-  "glow up":   "измениться к лучшему",
-  "glow-up":   "измениться к лучшему",
-  "era":       "эпоха / период (напр. 'in my villain era')",
-  "vibe check": "проверка атмосферы",
-  "understood the assignment": "понял задачу / справился",
-  "rent free":  "засело в голове",
-  "living rent free": "живёт в голове / не выходит из головы",
-  "it's giving": "это даёт вайб / напоминает",
-  "ate":       "блестяще справился / уничтожил",
-  "ate and left no crumbs": "справился блестяще",
-  "rizz":      "харизма / умение флиртовать",
-  "rizzed up":  "очаровал / соблазнил",
-  "situationship": "неопределённые отношения",
-  "delulu":    "иллюзии / в розовых очках",
-  "real one":  "настоящий / свой человек",
-  "hit different": "ощущается по-другому",
-  "lowkey fire": "тихонько огонь / незаметно крут",
-  // Аббревиатуры
-  "lol":   "хахаха / смешно (Laugh Out Loud)",
-  "lmao":  "умираю со смеху",
-  "lmfao": "умираю со смеху (сильнее)",
-  "omg":   "о боже / ой",
-  "omfg":  "о боже мой (сильнее)",
-  "wtf":   "что за хрень / что вообще",
-  "ngl":   "честно говоря (Not Gonna Lie)",
-  "tbh":   "если честно (To Be Honest)",
-  "imo":   "по моему мнению (In My Opinion)",
-  "imho":  "ИМХО (In My Humble Opinion)",
-  "idk":   "не знаю (I Don't Know)",
-  "idk":   "не знаю",
-  "idc":   "мне всё равно (I Don't Care)",
-  "irl":   "в реальной жизни (In Real Life)",
-  "rn":    "прямо сейчас (Right Now)",
-  "asap":  "как можно скорее",
-  "brb":   "скоро вернусь (Be Right Back)",
-  "gtg":   "мне пора (Got To Go)",
-  "smh":   "качаю головой / в шоке (Shaking My Head)",
-  "fr":    "серьёзно / на самом деле (For Real)",
-  "fr fr": "100% серьёзно",
-  "npc":   "несамостоятельный / робот (Non-Player Character)",
-  "pov":   "от первого лица / точка зрения (Point Of View)",
-  "fyp":   "для тебя / подборка TikTok (For You Page)",
-  "gg":    "хорошая игра / красаучик",
-  "gl":    "удачи (Good Luck)",
-  "hf":    "приятной игры (Have Fun)",
-  "afk":   "отошёл (Away From Keyboard)",
-};
-
-/** Look up slang instantly (no network). Returns array like fetchMyMemory output. */
-function fetchSlang(q, isRu) {
-  if (isRu) return []; // Slang map is EN→RU only
-  const key = q.trim().toLowerCase();
-  const val = SLANG_EN_RU[key];
-  return val ? [{ t: val, src: '🔥 Сленг', q }] : [];
-}
-
-/* ═══════════════════════════════════════════════════════════
-   AUTOCOMPLETE (dropdown)
-   ═══════════════════════════════════════════════════════════ */
-let _debTimer    = null;
-let _abortCtrl   = null;
-let _suggestions = [];
-let _dropAnchor  = null; // { termEl, defEl|null }
-let _dropIdx     = -1;
-
-const dropdown = $('dropdownPortal');
-
-function handleAutocomplete(termEl, defEl = null) {
-  _dropAnchor = { termEl, defEl };
-  const q = termEl.value.trim();
-  if (q.length < 2) { closeDropdown(); return; }
-
-  clearTimeout(_debTimer);
-  _debTimer = setTimeout(() => fetchSuggestions(q), DEBOUNCE_MS);
-}
-
-/**
- * Two-phase autocomplete:
- * Phase 1 (instant): slang dict + MyMemory — shown immediately
- * Phase 2 (async):   Gemini — appended when ready, without blocking Phase 1
- */
-async function fetchSuggestions(q) {
-  if (_abortCtrl) _abortCtrl.abort();
-  _abortCtrl = new AbortController();
-  const sig  = _abortCtrl.signal;
-  const isRu = /[а-яА-ЯёЁ]/.test(q);
-
-  // ── Phase 1: instant slang + MyMemory (fast, ~200ms) ──
-  const slang = fetchSlang(q, isRu);
-  _suggestions = slang.map(s => ({ ...s, isRu }));
-  _dropIdx = -1;
-  if (slang.length) renderDropdown(); // Show slang immediately if found
-
-  let mmDone = false;
-  fetchMyMemory(q, sig, isRu)
-    .then(mm => {
-      mmDone = true;
-      mm.forEach(s => {
-        const k = s.t.toLowerCase().trim();
-        if (!_suggestions.find(x => x.t.toLowerCase().trim() === k)) {
-          _suggestions.push({ ...s, isRu });
-        }
-      });
-      _suggestions = _suggestions.slice(0, 6);
-      renderDropdown();
-    })
-    .catch(() => {});
-
-  // ── Phase 2: Gemini in background — appends without blocking ──
-  fetchGemini(q, sig, isRu)
-    .then(gem => {
-      if (!gem.length) return;
-      gem.forEach(s => {
-        const k = s.t.toLowerCase().trim();
-        if (!_suggestions.find(x => x.t.toLowerCase().trim() === k)) {
-          _suggestions.push({ ...s, isRu });
-        }
-      });
-      _suggestions = _suggestions.slice(0, 7);
-      renderDropdown(); // Update dropdown with AI suggestions added
-    })
-    .catch(() => {});
-}
-
-function renderDropdown() {
-  if (!_suggestions.length || !_dropAnchor) { dropdown.style.display = 'none'; return; }
-
-  dropdown.innerHTML = '';
-  _suggestions.forEach((s, i) => {
-    const item = el('div', `drop-item${i === _dropIdx ? ' active' : ''}`);
-    item.innerHTML = `<span>${esc(s.t)}</span><span class="drop-tag">${s.src}</span>`;
-    item.onmousedown = e => { e.preventDefault(); pickSuggestion(i); };
-    item.onmouseenter = () => {
-      _dropIdx = i;
-      dropdown.querySelectorAll('.drop-item').forEach((el,j) => el.classList.toggle('active', j===i));
-    };
-    dropdown.appendChild(item);
-  });
-
-  // Position under anchor input
-  const rect = _dropAnchor.termEl.getBoundingClientRect();
-  dropdown.style.display = 'block';
-  dropdown.style.top     = `${rect.bottom + 6}px`;
-  dropdown.style.left    = `${rect.left}px`;
-  dropdown.style.width   = `${Math.max(rect.width, 220)}px`;
-}
-
-function handleDropdownKey(e, termEl, defEl) {
-  if (!_suggestions.length) return;
-  if (e.key === 'ArrowDown')  { e.preventDefault(); _dropIdx = Math.min(_dropIdx+1, _suggestions.length-1); renderDropdown(); }
-  if (e.key === 'ArrowUp')    { e.preventDefault(); _dropIdx = Math.max(-1, _dropIdx-1); renderDropdown(); }
-  if (e.key === 'Enter')      { e.preventDefault(); pickSuggestion(Math.max(0, _dropIdx)); }
-  if (e.key === 'Escape')     { closeDropdown(); }
-}
-
-function pickSuggestion(i) {
-  const s = _suggestions[i];
-  if (!s || !_dropAnchor) return;
-  const { termEl, defEl } = _dropAnchor;
-
-  if (s.isRu) {
-    termEl.value = s.ru ?? termEl.value;
-    if (defEl) defEl.value = s.t;
-    else {
-      // Existing card row: find the def sibling
-      const row = termEl.closest('.card-row');
-      if (row) {
-        const inputs = row.querySelectorAll('.card-input');
-        if (inputs[1]) inputs[1].value = s.t;
-        // Save
-        const id = row.dataset.cardId;
-        if (id) Store.updateCard(AppState.activeSetId, id, { en: termEl.value, ru: s.t });
-      }
-    }
-  } else {
-    termEl.value = s.q ?? termEl.value;
-    if (defEl) defEl.value = s.t;
-    else {
-      const row = termEl.closest('.card-row');
-      if (row) {
-        const inputs = row.querySelectorAll('.card-input');
-        if (inputs[1]) inputs[1].value = s.t;
-        const id = row.dataset.cardId;
-        if (id) Store.updateCard(AppState.activeSetId, id, { en: termEl.value, ru: s.t });
-      }
-    }
-  }
-
-  closeDropdown();
-
-  // If new row, trigger save
-  if (_dropAnchor.defEl) {
-    const row = termEl.closest('.card-row');
-    if (row?.dataset.new) {
-      const inputs = row.querySelectorAll('.card-input');
-      const t = inputs[0].value.trim(), d = inputs[1].value.trim();
-      if (t && d) {
-        const card = Store.addCard(AppState.activeSetId, t, d);
-        if (card) {
-          const saved = buildCardRow(card);
-          row.replaceWith(saved);
-          updateCardCount();
-          addNewEmptyRow();
-        }
-      }
-    }
-  }
-}
-
-function closeDropdown() {
-  dropdown.style.display = 'none';
-  _suggestions = [];
-  _dropIdx     = -1;
-}
-
-// Close dropdown when clicking outside
-document.addEventListener('mousedown', e => {
-  if (!dropdown.contains(e.target) && _dropAnchor && !_dropAnchor.termEl.contains(e.target)) {
-    closeDropdown();
-  }
-});
-
-/* ── API: MyMemory ── */
-async function fetchMyMemory(q, signal, isRu) {
-  const pair = isRu ? 'ru|en' : 'en|ru';
-  try {
-    const r = await fetch(`${MYMEMORY_URL}?q=${encodeURIComponent(q)}&langpair=${pair}`, { signal });
-    if (!r.ok) return [];
-    const d = await r.json();
-    const t = d.responseData?.translatedText?.trim();
-    return t && t !== q ? [{ t, src: 'MM', q }] : [];
-  } catch { return []; }
-}
-
-/* ── API: Gemini (optional, if key stored) ── */
-async function fetchGemini(q, signal, isRu) {
-  const key = localStorage.getItem(API_KEY_STORE);
-  if (!key) return [];
-  const prompt = isRu
-    ? `Dictionary RU→EN. Word: "${q}". Return JSON array max 3: [{"t":"translation"}]. Only JSON.`
-    : `Dictionary EN→RU. Word: "${q}". Return JSON array max 3: [{"t":"перевод"}]. Only JSON.`;
-  try {
-    const r = await fetch(`${GEMINI_URL}?key=${key}`, {
-      method: 'POST', signal,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.2, maxOutputTokens: 200 } })
-    });
-    if (!r.ok) return [];
-    const d   = await r.json();
-    const raw = (d?.candidates?.[0]?.content?.parts?.[0]?.text ?? '').replace(/```json|```/g,'').trim();
-    const arr = JSON.parse(raw);
-    return Array.isArray(arr) ? arr.map(x => ({ t: x.t, src: 'AI', q })) : [];
-  } catch { return []; }
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -855,120 +525,6 @@ const FcModule = {
   }
 };
 
-/* ═══════════════════════════════════════════════════════════
-   QUIZ MODULE
-   4-option multiple choice, EN→RU or RU→EN
-   ═══════════════════════════════════════════════════════════ */
-const QuizModule = {
-  deck:     [],
-  idx:      0,
-  correct:  0,
-  total:    0,
-  streak:   0,
-  locked:   false,
-  reverse:  false, // false = EN→RU, true = RU→EN
-
-  start(setId, reverse = this.reverse) {
-    const cards = Store.getCards(setId);
-    if (cards.length < 4) {
-      $('quizNeedMore').style.display  = 'flex';
-      $('quizActive').style.display    = 'none';
-      $('quizFinished').style.display  = 'none';
-      setView('quiz', setId);
-      return;
-    }
-    this.reverse  = reverse;
-    this.deck     = shuffle([...cards]);
-    this.idx      = 0;
-    this.correct  = 0;
-    this.total    = 0;
-    this.streak   = 0;
-    this.locked   = false;
-
-    $('quizNeedMore').style.display  = 'none';
-    $('quizActive').style.display    = 'block';
-    $('quizFinished').style.display  = 'none';
-
-    // Sync toggle UI
-    $('modeEnRu').classList.toggle('active', !reverse);
-    $('modeRuEn').classList.toggle('active',  reverse);
-
-    setView('quiz', setId);
-    this.renderQuestion();
-  },
-
-  renderQuestion() {
-    if (this.idx >= this.deck.length) return this.finish();
-    this.locked = false;
-    const card  = this.deck[this.idx];
-
-    // Update progress
-    $('quizProgressFill').style.width = `${(this.idx / this.deck.length * 100).toFixed(1)}%`;
-    $('quizScore').textContent        = `${this.correct} / ${this.total}`;
-
-    // Streak badge
-    const badgeEl = $('streakBadge');
-    badgeEl.textContent = this.streak >= 3 ? `🔥 ${this.streak} подряд` : '';
-
-    // Question: if reverse=true, show RU, answer EN; else show EN, answer RU
-    const qText  = this.reverse ? card.ru : card.en;
-    const ansKey = this.reverse ? 'en' : 'ru';
-    const ans    = card[ansKey];
-
-    $('quizLangTag').textContent = this.reverse ? 'RU' : 'EN';
-    $('quizWord').textContent    = qText;
-
-    // Build 4 options: 1 correct + 3 random wrong
-    const pool  = Store.getCards(AppState.activeSetId).filter(c => c.id !== card.id);
-    const wrongs = shuffle(pool).slice(0, 3).map(c => c[ansKey]);
-    const options = shuffle([{ text: ans, correct: true }, ...wrongs.map(t => ({ text: t, correct: false }))]);
-
-    const grid = $('optionsGrid');
-    grid.innerHTML = '';
-    options.forEach(opt => {
-      const btn = el('button', 'option-btn');
-      btn.textContent = opt.text;
-      btn.onclick = () => this.answer(btn, opt.correct, ans);
-      grid.appendChild(btn);
-    });
-  },
-
-  answer(btn, isCorrect, correctAns) {
-    if (this.locked) return;
-    this.locked = true;
-    this.total++;
-
-    if (isCorrect) {
-      btn.classList.add('correct');
-      this.correct++;
-      this.streak++;
-    } else {
-      btn.classList.add('wrong');
-      this.streak = 0;
-      // Reveal correct answer
-      $('optionsGrid').querySelectorAll('.option-btn').forEach(b => {
-        if (b.textContent === correctAns) b.classList.add('reveal');
-      });
-    }
-
-    $('optionsGrid').querySelectorAll('.option-btn').forEach(b => b.disabled = true);
-    Store.updateCard(AppState.activeSetId, this.deck[this.idx].id, {
-      correct: (this.deck[this.idx].correct ?? 0) + (isCorrect ? 1 : 0),
-      wrong:   (this.deck[this.idx].wrong   ?? 0) + (isCorrect ? 0 : 1)
-    });
-
-    this.idx++;
-    setTimeout(() => this.renderQuestion(), 900);
-  },
-
-  finish() {
-    $('quizActive').style.display   = 'none';
-    $('quizFinished').style.display = 'flex';
-    const pct = this.total ? Math.round(this.correct / this.total * 100) : 0;
-    $('quizFinishedTitle').textContent = pct >= 80 ? 'Отлично! 🎉' : pct >= 60 ? 'Хороший результат 💪' : 'Нужно ещё практики 📖';
-    $('quizFinishedSub').textContent   = `${this.correct} из ${this.total} правильно · ${pct}%`;
-  }
-};
 
 /* ═══════════════════════════════════════════════════════════
    TOAST
@@ -1079,7 +635,6 @@ function init() {
 
   // Study mode launch
   $('btnStartFlashcards').onclick = () => FcModule.start(AppState.activeSetId);
-  $('btnStartQuiz').onclick       = () => QuizModule.start(AppState.activeSetId);
 
   // ── Flashcards ──
   $('btnExitFlashcards').onclick   = () => openSet(AppState.activeSetId);
@@ -1099,24 +654,11 @@ function init() {
   $('fcFrontAudio').onclick = e => { e.stopPropagation(); speak($('fcFrontWord').textContent); };
   $('fcBackAudio').onclick  = e => { e.stopPropagation(); speak($('fcFrontWord').textContent); };
 
-  // ── Quiz ──
-  $('btnExitQuiz').onclick    = () => openSet(AppState.activeSetId);
-  $('modeEnRu').onclick       = () => QuizModule.start(AppState.activeSetId, false);
-  $('modeRuEn').onclick       = () => QuizModule.start(AppState.activeSetId, true);
-  $('btnGoAddCards').onclick  = () => openSet(AppState.activeSetId);
-  $('btnQuizRestart').onclick = () => QuizModule.start(AppState.activeSetId, QuizModule.reverse);
-  $('btnQuizExit').onclick    = () => openSet(AppState.activeSetId);
 
   // ── Settings modal ──
   $('btnSettings').onclick       = openSettings;
-  $('btnCloseSettings').onclick  = closeSettings;
-  $('btnCancelSettings').onclick = closeSettings;
+  $('btnCloseSettings').onclick = closeSettings;
   $('settingsOverlay').onclick   = e => { if (e.target === $('settingsOverlay')) closeSettings(); };
-  $('btnSaveKey').onclick        = saveGeminiKey;
-
-  // Pre-fill key
-  const savedKey = localStorage.getItem(API_KEY_STORE);
-  if (savedKey) $('geminiKeyInput').value = savedKey;
 
   // ── Keyboard shortcuts ──
   document.addEventListener('keydown', e => {
@@ -1126,13 +668,6 @@ function init() {
       if (e.key   === 'ArrowLeft')  { e.preventDefault(); FcModule.prev(); }
       if (e.key   === 'y' || e.key === 'к') FcModule.verdict(true);
       if (e.key   === 'n' || e.key === 'т') FcModule.verdict(false);
-    }
-    if ($('viewQuiz').classList.contains('active') && !QuizModule.locked) {
-      const n = parseInt(e.key);
-      if (n >= 1 && n <= 4) {
-        const btns = $('optionsGrid').querySelectorAll('.option-btn');
-        if (btns[n-1]) btns[n-1].click();
-      }
     }
   });
 
@@ -1146,10 +681,13 @@ function init() {
   if (syncCfg.binId)  $('syncBinIdInput').value  = syncCfg.binId;
   updateSyncStatus();
 
-  // ── Boot: pull from cloud first, then render ──
+  // ── Boot: render local immediately, then sync in background ──
+  renderHome();
   SyncService.pull().then(remoteSets => {
-    if (remoteSets) showToast('☁ Данные загружены из облака');
-    renderHome();
+    if (remoteSets) {
+      showToast('☁ Данные загружены из облака');
+      renderHome();
+    }
   });
 }
 
@@ -1163,15 +701,6 @@ function openSettings() {
 }
 function closeSettings() {
   $('settingsOverlay').classList.remove('open');
-  $('keyStatus').textContent = '';
-}
-function saveGeminiKey() {
-  const k = $('geminiKeyInput').value.trim();
-  if (!k) { $('keyStatus').textContent = '⚠ Введите ключ'; $('keyStatus').style.color = 'var(--red)'; return; }
-  localStorage.setItem(API_KEY_STORE, k);
-  $('keyStatus').textContent = '✓ Сохранено';
-  $('keyStatus').style.color = 'var(--green)';
-  setTimeout(closeSettings, 900);
 }
 
 /** Show current sync connection status inside settings modal */
