@@ -14,9 +14,11 @@
 const STORAGE_KEY    = 'flashlingo_sets';
 const OLD_STORAGE_KEY= 'flashlingo_cards';
 const API_KEY_STORE  = 'flashlingo_gemini_key';
+const SYNC_KEY       = 'flashlingo_sync';   // { apiKey, binId }
 const DEBOUNCE_MS    = 300;
 const MYMEMORY_URL   = 'https://api.mymemory.translated.net/get';
 const GEMINI_URL     = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+const JSONBIN_URL    = 'https://api.jsonbin.io/v3/b';
 
 /* ═══════════════════════════════════════════════════════════
    STORE — localStorage abstraction
@@ -38,7 +40,10 @@ const Store = {
     } catch { return []; }
   },
 
-  save(sets) { localStorage.setItem(STORAGE_KEY, JSON.stringify(sets)); },
+  save(sets) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(sets));
+    SyncService.push(sets); // push to cloud on every change
+  },
 
   getSet(id)   { return this.load().find(s => s.id === id) || null; },
   getCards(id) { return this.getSet(id)?.cards ?? []; },
@@ -87,6 +92,128 @@ const Store = {
     const sets = this.load();
     const set  = sets.find(s => s.id === setId);
     if (set) { set.cards.push(card); this.save(sets); }
+  }
+};
+
+/* ═══════════════════════════════════════════════════════════
+   SYNC SERVICE — JSONbin.io cloud sync
+   One shared database: same data on all devices.
+   
+   Flow:
+   • pull() on app load — merge cloud data if newer
+   • push() on every Store.save() — debounced 1.5s
+   • Status indicator in header: 🔄 / ✓ / ✗
+   ═══════════════════════════════════════════════════════════ */
+const SyncService = {
+  _pushTimer: null,
+
+  /** Load sync config from localStorage */
+  settings() {
+    try { return JSON.parse(localStorage.getItem(SYNC_KEY)) || {}; }
+    catch { return {}; }
+  },
+
+  /** Save sync config */
+  saveSettings(apiKey, binId) {
+    localStorage.setItem(SYNC_KEY, JSON.stringify({ apiKey, binId }));
+  },
+
+  /** Check if sync is configured */
+  isConfigured() {
+    const { apiKey, binId } = this.settings();
+    return !!(apiKey && binId);
+  },
+
+  /** Update the sync indicator dot in the header */
+  setStatus(status) {
+    const dot = $('syncDot');
+    if (!dot) return;
+    dot.className = 'sync-dot sync-' + status;
+    dot.title = { idle: '', syncing: 'Синхронизация...', ok: '✓ Синхронизировано', error: '✗ Ошибка синхронизации' }[status] || '';
+  },
+
+  /**
+   * Create a new JSONbin bin for first-time setup.
+   * Returns the binId or null on error.
+   */
+  async createBin(apiKey) {
+    try {
+      const res = await fetch(JSONBIN_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type':  'application/json',
+          'X-Master-Key':  apiKey,
+          'X-Bin-Name':    'FlashLingo',
+          'X-Bin-Private': 'false'   // public = visible to anyone with the URL / binId
+        },
+        body: JSON.stringify({ sets: Store.load(), updatedAt: Date.now() })
+      });
+      if (!res.ok) return null;
+      const d = await res.json();
+      return d.metadata?.id ?? null;
+    } catch { return null; }
+  },
+
+  /**
+   * Pull data from cloud.
+   * If cloud is newer than local, merge and return the sets array.
+   * Returns null on error or if local is up-to-date.
+   */
+  async pull() {
+    const { apiKey, binId } = this.settings();
+    if (!apiKey || !binId) return null;
+    this.setStatus('syncing');
+    try {
+      const res = await fetch(`${JSONBIN_URL}/${binId}/latest`, {
+        headers: { 'X-Master-Key': apiKey }
+      });
+      if (!res.ok) { this.setStatus('error'); return null; }
+      const d = await res.json();
+      const remote = d.record;
+      if (!remote?.sets) { this.setStatus('ok'); return null; }
+
+      // Compare timestamps
+      const localUpdated  = parseInt(localStorage.getItem('flashlingo_updated') || '0');
+      const remoteUpdated = remote.updatedAt || 0;
+      this.setStatus('ok');
+
+      if (remoteUpdated > localUpdated) {
+        // Cloud is newer — overwrite local
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(remote.sets));
+        localStorage.setItem('flashlingo_updated', String(remoteUpdated));
+        return remote.sets;
+      }
+      return null; // local is up-to-date
+    } catch { this.setStatus('error'); return null; }
+  },
+
+  /**
+   * Push local data to cloud. Debounced 1.5s to batch rapid changes.
+   */
+  push(sets) {
+    if (!this.isConfigured()) return;
+    clearTimeout(this._pushTimer);
+    this._pushTimer = setTimeout(() => this._doPush(sets), 1500);
+  },
+
+  async _doPush(sets) {
+    const { apiKey, binId } = this.settings();
+    if (!apiKey || !binId) return;
+    this.setStatus('syncing');
+    try {
+      const now = Date.now();
+      const res = await fetch(`${JSONBIN_URL}/${binId}`, {
+        method:  'PUT',
+        headers: { 'Content-Type': 'application/json', 'X-Master-Key': apiKey },
+        body: JSON.stringify({ sets, updatedAt: now })
+      });
+      if (res.ok) {
+        localStorage.setItem('flashlingo_updated', String(now));
+        this.setStatus('ok');
+      } else {
+        this.setStatus('error');
+      }
+    } catch { this.setStatus('error'); }
   }
 };
 
@@ -323,6 +450,121 @@ function createNewSet() {
 }
 
 /* ═══════════════════════════════════════════════════════════
+   SLANG DICTIONARY — instant, no network needed
+   EN → RU and RU → EN
+   ═══════════════════════════════════════════════════════════ */
+const SLANG_EN_RU = {
+  // Разговорные сокращения
+  "gonna":   "собираюсь / буду",
+  "wanna":   "хочу / хотеть",
+  "gotta":   "должен / нужно",
+  "kinda":   "типа / как бы",
+  "sorta":   "вроде / типа",
+  "lemme":   "дай мне / позволь",
+  "gimme":   "дай мне",
+  "dunno":   "не знаю",
+  "ain't":   "не есть / нет",
+  "y'all":   "вы все / все вы",
+  "cuz":     "потому что",
+  "'cause":  "потому что",
+  "'bout":   "насчёт / примерно",
+  "tryna":   "пытаюсь",
+  "shoulda": "должен был",
+  "coulda":  "мог бы",
+  "woulda":  "мог бы / сделал бы",
+  // Сленг
+  "lit":       "крутой / горячий / в кайф",
+  "fire":      "огонь / крутяк",
+  "slay":      "убивать / выглядеть шикарно",
+  "vibe":      "атмосфера / ощущение",
+  "vibing":    "кайфовать / кайфуем",
+  "bussin":    "очень вкусно / топ",
+  "bussing":   "очень вкусно / топ",
+  "sus":       "подозрительный",
+  "cap":       "ложь / брехня",
+  "no cap":    "без обмана / серьёзно",
+  "lowkey":    "тихонько / по-тихому / немного",
+  "highkey":   "явно / сильно",
+  "mid":       "посредственный / средненький",
+  "slaps":     "звучит отлично / это огонь",
+  "hits different": "воспринимается иначе / по-другому ощущается",
+  "it hits":   "это бьёт / это трогает",
+  "goated":    "легенда / лучший из лучших",
+  "goat":      "легенда (Greatest Of All Time)",
+  "based":     "здравый / крутой / независимый",
+  "cringe":    "кринж / стыдобище",
+  "salty":     "обиженный / недовольный",
+  "savage":    "дикий / безбашенный",
+  "extra":     "чересчур / пережимает",
+  "shady":     "подозрительный / мутный",
+  "sketchy":   "подозрительный / странный",
+  "snatched":  "безупречный / выглядеть шикарно",
+  "receipts":  "доказательства / скрины",
+  "tea":       "сплетни / инфа",
+  "spill the tea": "рассказать сплетни",
+  "shade":     "снисходительность / дерзость",
+  "throw shade": "подкалывать / унижать",
+  "ghost":     "пропасть / игнорировать",
+  "ghosted":   "пропал / перестал отвечать",
+  "flex":      "хвастаться / показывать",
+  "clout":     "влияние / популярность",
+  "glow up":   "измениться к лучшему",
+  "glow-up":   "измениться к лучшему",
+  "era":       "эпоха / период (напр. 'in my villain era')",
+  "vibe check": "проверка атмосферы",
+  "understood the assignment": "понял задачу / справился",
+  "rent free":  "засело в голове",
+  "living rent free": "живёт в голове / не выходит из головы",
+  "it's giving": "это даёт вайб / напоминает",
+  "ate":       "блестяще справился / уничтожил",
+  "ate and left no crumbs": "справился блестяще",
+  "rizz":      "харизма / умение флиртовать",
+  "rizzed up":  "очаровал / соблазнил",
+  "situationship": "неопределённые отношения",
+  "delulu":    "иллюзии / в розовых очках",
+  "real one":  "настоящий / свой человек",
+  "hit different": "ощущается по-другому",
+  "lowkey fire": "тихонько огонь / незаметно крут",
+  // Аббревиатуры
+  "lol":   "хахаха / смешно (Laugh Out Loud)",
+  "lmao":  "умираю со смеху",
+  "lmfao": "умираю со смеху (сильнее)",
+  "omg":   "о боже / ой",
+  "omfg":  "о боже мой (сильнее)",
+  "wtf":   "что за хрень / что вообще",
+  "ngl":   "честно говоря (Not Gonna Lie)",
+  "tbh":   "если честно (To Be Honest)",
+  "imo":   "по моему мнению (In My Opinion)",
+  "imho":  "ИМХО (In My Humble Opinion)",
+  "idk":   "не знаю (I Don't Know)",
+  "idk":   "не знаю",
+  "idc":   "мне всё равно (I Don't Care)",
+  "irl":   "в реальной жизни (In Real Life)",
+  "rn":    "прямо сейчас (Right Now)",
+  "asap":  "как можно скорее",
+  "brb":   "скоро вернусь (Be Right Back)",
+  "gtg":   "мне пора (Got To Go)",
+  "smh":   "качаю головой / в шоке (Shaking My Head)",
+  "fr":    "серьёзно / на самом деле (For Real)",
+  "fr fr": "100% серьёзно",
+  "npc":   "несамостоятельный / робот (Non-Player Character)",
+  "pov":   "от первого лица / точка зрения (Point Of View)",
+  "fyp":   "для тебя / подборка TikTok (For You Page)",
+  "gg":    "хорошая игра / красаучик",
+  "gl":    "удачи (Good Luck)",
+  "hf":    "приятной игры (Have Fun)",
+  "afk":   "отошёл (Away From Keyboard)",
+};
+
+/** Look up slang instantly (no network). Returns array like fetchMyMemory output. */
+function fetchSlang(q, isRu) {
+  if (isRu) return []; // Slang map is EN→RU only
+  const key = q.trim().toLowerCase();
+  const val = SLANG_EN_RU[key];
+  return val ? [{ t: val, src: '🔥 Сленг', q }] : [];
+}
+
+/* ═══════════════════════════════════════════════════════════
    AUTOCOMPLETE (dropdown)
    ═══════════════════════════════════════════════════════════ */
 let _debTimer    = null;
@@ -342,29 +584,52 @@ function handleAutocomplete(termEl, defEl = null) {
   _debTimer = setTimeout(() => fetchSuggestions(q), DEBOUNCE_MS);
 }
 
+/**
+ * Two-phase autocomplete:
+ * Phase 1 (instant): slang dict + MyMemory — shown immediately
+ * Phase 2 (async):   Gemini — appended when ready, without blocking Phase 1
+ */
 async function fetchSuggestions(q) {
   if (_abortCtrl) _abortCtrl.abort();
   _abortCtrl = new AbortController();
-  const sig   = _abortCtrl.signal;
-  const isRu  = /[а-яА-ЯёЁ]/.test(q);
+  const sig  = _abortCtrl.signal;
+  const isRu = /[а-яА-ЯёЁ]/.test(q);
 
-  try {
-    const [mm, gem] = await Promise.allSettled([
-      fetchMyMemory(q, sig, isRu),
-      fetchGemini(q, sig, isRu)
-    ]);
-    const seen = new Set();
-    _suggestions = [];
-    [...(gem.value ?? []), ...(mm.value ?? [])].forEach(s => {
-      const k = s.t.toLowerCase().trim();
-      if (!seen.has(k)) { seen.add(k); _suggestions.push({ ...s, isRu }); }
-    });
-    _suggestions = _suggestions.slice(0, 5);
-    _dropIdx = -1;
-    renderDropdown();
-  } catch(e) {
-    if (e.name !== 'AbortError') closeDropdown();
-  }
+  // ── Phase 1: instant slang + MyMemory (fast, ~200ms) ──
+  const slang = fetchSlang(q, isRu);
+  _suggestions = slang.map(s => ({ ...s, isRu }));
+  _dropIdx = -1;
+  if (slang.length) renderDropdown(); // Show slang immediately if found
+
+  let mmDone = false;
+  fetchMyMemory(q, sig, isRu)
+    .then(mm => {
+      mmDone = true;
+      mm.forEach(s => {
+        const k = s.t.toLowerCase().trim();
+        if (!_suggestions.find(x => x.t.toLowerCase().trim() === k)) {
+          _suggestions.push({ ...s, isRu });
+        }
+      });
+      _suggestions = _suggestions.slice(0, 6);
+      renderDropdown();
+    })
+    .catch(() => {});
+
+  // ── Phase 2: Gemini in background — appends without blocking ──
+  fetchGemini(q, sig, isRu)
+    .then(gem => {
+      if (!gem.length) return;
+      gem.forEach(s => {
+        const k = s.t.toLowerCase().trim();
+        if (!_suggestions.find(x => x.t.toLowerCase().trim() === k)) {
+          _suggestions.push({ ...s, isRu });
+        }
+      });
+      _suggestions = _suggestions.slice(0, 7);
+      renderDropdown(); // Update dropdown with AI suggestions added
+    })
+    .catch(() => {});
 }
 
 function renderDropdown() {
@@ -871,13 +1136,30 @@ function init() {
     }
   });
 
-  // ── Boot ──
-  renderHome();
+  // ── Sync settings UI ──
+  $('btnSyncConnect').onclick = connectSync;
+  $('syncBinIdInput').onclick = e => e.stopPropagation();
+
+  // Pre-fill sync fields
+  const syncCfg = SyncService.settings();
+  if (syncCfg.apiKey) $('syncApiKeyInput').value = syncCfg.apiKey;
+  if (syncCfg.binId)  $('syncBinIdInput').value  = syncCfg.binId;
+  updateSyncStatus();
+
+  // ── Boot: pull from cloud first, then render ──
+  SyncService.pull().then(remoteSets => {
+    if (remoteSets) showToast('☁ Данные загружены из облака');
+    renderHome();
+  });
 }
 
 function openSettings() {
+  // Refresh sync fields every time modal opens
+  const cfg = SyncService.settings();
+  if (cfg.apiKey) $('syncApiKeyInput').value = cfg.apiKey;
+  if (cfg.binId)  $('syncBinIdInput').value  = cfg.binId;
+  updateSyncStatus();
   $('settingsOverlay').classList.add('open');
-  $('geminiKeyInput').focus();
 }
 function closeSettings() {
   $('settingsOverlay').classList.remove('open');
@@ -890,6 +1172,74 @@ function saveGeminiKey() {
   $('keyStatus').textContent = '✓ Сохранено';
   $('keyStatus').style.color = 'var(--green)';
   setTimeout(closeSettings, 900);
+}
+
+/** Show current sync connection status inside settings modal */
+function updateSyncStatus() {
+  const statusEl = $('syncStatus');
+  const binRow   = $('syncBinRow');
+  if (!statusEl) return;
+  const { apiKey, binId } = SyncService.settings();
+  if (apiKey && binId) {
+    statusEl.textContent = '✓ Подключено';
+    statusEl.style.color = 'var(--green)';
+    binRow.style.display = 'block';
+  } else {
+    statusEl.textContent = apiKey ? 'Нажмите «Подключить»' : 'Не настроено';
+    statusEl.style.color = 'var(--text-muted)';
+    binRow.style.display = 'none';
+  }
+}
+
+/**
+ * Connect to cloud sync:
+ * If no binId yet — create a new bin.
+ * If binId exists — verify and save.
+ */
+async function connectSync() {
+  const apiKey = $('syncApiKeyInput').value.trim();
+  const statusEl = $('syncStatus');
+  if (!apiKey) {
+    statusEl.textContent = '⚠ Введите API Key';
+    statusEl.style.color = 'var(--red)';
+    return;
+  }
+
+  const btn = $('btnSyncConnect');
+  btn.textContent = 'Подключаю...';
+  btn.disabled = true;
+
+  let { binId } = SyncService.settings();
+  const existingBinId = $('syncBinIdInput').value.trim();
+
+  if (existingBinId) {
+    // Use provided Bin ID (syncing with existing database)
+    binId = existingBinId;
+    SyncService.saveSettings(apiKey, binId);
+    const pulled = await SyncService.pull();
+    if (pulled) {
+      showToast('☁ Данные загружены из облака');
+      renderHome();
+    }
+    statusEl.textContent = SyncService.isConfigured() ? '✓ Подключено' : '✗ Ошибка';
+    statusEl.style.color = SyncService.isConfigured() ? 'var(--green)' : 'var(--red)';
+  } else {
+    // Create new bin
+    binId = await SyncService.createBin(apiKey);
+    if (binId) {
+      SyncService.saveSettings(apiKey, binId);
+      $('syncBinIdInput').value = binId;
+      statusEl.textContent = '✓ Облако создано!';
+      statusEl.style.color = 'var(--green)';
+    } else {
+      statusEl.textContent = '✗ Ошибка. Проверь API Key';
+      statusEl.style.color = 'var(--red)';
+    }
+  }
+
+  btn.textContent = 'Подключить';
+  btn.disabled = false;
+  updateSyncStatus();
 }
 
 // ── Kick off ──

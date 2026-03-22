@@ -998,6 +998,32 @@ a:hover { text-decoration: underline; }
 }
 .toast-undo:hover { text-decoration: underline; }
 
+/* ── Sync Status Dot ── */
+.sync-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+  transition: background var(--dur-mid) var(--ease), box-shadow var(--dur-mid) var(--ease);
+}
+.sync-idle    { background: transparent; }
+.sync-syncing { background: #f59e0b; box-shadow: 0 0 6px rgba(245,158,11,0.5); animation: pulse 1s ease-in-out infinite; }
+.sync-ok      { background: var(--green); box-shadow: 0 0 6px rgba(52,211,153,0.4); }
+.sync-error   { background: var(--red);   box-shadow: 0 0 6px rgba(248,113,113,0.4); }
+
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+/* ── Modal Section Label ── */
+.modal-section-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+
 /* ═══════════════════════════════════════════════════════════
    STATES — Empty, Error
    ═══════════════════════════════════════════════════════════ */

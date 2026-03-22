@@ -23,6 +23,7 @@
     <div class="header-title" id="headerTitle"></div>
 
     <div class="header-actions">
+      <span class="sync-dot sync-idle" id="syncDot" title="Синхронизация"></span>
       <button class="icon-btn" id="btnSettings" title="Настройки">
         <!-- gear icon -->
         <svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -219,8 +220,36 @@
           <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
       </div>
+
+      <!-- ── Sync section ── -->
+      <div class="modal-section-label">☁ Синхронизация между устройствами</div>
       <p class="modal-hint">
-        Gemini API ключ — для умных подсказок при вводе слов.<br>
+        Данные хранятся в облаке — открывай на ПК и телефоне, всё синхронизируется автоматически.<br>
+        Получи бесплатный ключ на <a href="https://jsonbin.io" target="_blank" rel="noopener">jsonbin.io</a> (вкладка API Keys).
+      </p>
+      <input type="password" class="modal-input" id="syncApiKeyInput" placeholder="$2b$12$... (JSONbin Master Key)" />
+
+      <!-- Bin ID row — shown after connecting, to copy and use on other devices -->
+      <div id="syncBinRow" style="display:none; margin-bottom:12px;">
+        <div style="font-size:12px; color:var(--text-muted); margin-bottom:6px;">
+          Bin ID — вставь на другом устройстве, чтобы использовать ту же базу:
+        </div>
+        <input type="text" class="modal-input" id="syncBinIdInput"
+               placeholder="Вставь Bin ID с другого устройства (опционально)"
+               style="font-size:12px; font-family:monospace; margin-bottom:0;" />
+      </div>
+
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:8px;">
+        <div class="modal-status" id="syncStatus">Не настроено</div>
+        <button class="btn btn-primary" id="btnSyncConnect" style="flex-shrink:0;">Подключить</button>
+      </div>
+
+      <hr style="border:none; border-top:1px solid var(--border); margin:16px 0;" />
+
+      <!-- ── Gemini AI section ── -->
+      <div class="modal-section-label">🤖 Gemini AI (подсказки)</div>
+      <p class="modal-hint">
+        Нужен для умных подсказок при вводе слов.<br>
         <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Получить бесплатно →</a>
       </p>
       <input type="password" class="modal-input" id="geminiKeyInput" placeholder="AIza…" />
